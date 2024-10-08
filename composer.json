@@ -1,11 +1,11 @@
 {
-    "name": "plantation/cocoa",
+    "name": "plantation/banana",
     "description": "this is moden framework for php",
     "type": "project",
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Plantation\\Cocoa\\": "cocoa/src/"
+            "Plantation\\Banana\\": "src/"
         }
     },
     "authors": [
