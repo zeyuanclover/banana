@@ -1,4 +1,5 @@
 <?php
+namespace Plantation\Banana\Functions;
 /**
  * @param $path
  * @return array
@@ -135,11 +136,7 @@ if(!function_exists('getValue')){
  * @return false|int|string|void
  * 上传文件
  */
-function upload($targetDirectory,$name,$key=[],$relativePath='',$fileName=''){
-    if(!is_dir($targetDirectory)){
-        return -1;
-    }
-
+function upload($name,$key=[],$relativePath='',$fileName=''){
     if(count($key)==0){
         $err = $_FILES[$name]['error'];
         $tempFile = $_FILES[$name]['tmp_name'];
@@ -156,7 +153,16 @@ function upload($targetDirectory,$name,$key=[],$relativePath='',$fileName=''){
             $fileName = $name;
         }
 
-        $targetFile = rtrim($targetDirectory,DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+        $path = ROOT_PATH.DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.rtrim($relativePath,DIRECTORY_SEPARATOR);
+        if(!is_dir($path)){
+            mkdir($path,0777,true);
+        }
+
+        if(!$relativePath){
+            $relativePath = date('Y-m-d-H');
+        }
+
+        $targetFile = ROOT_PATH.DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.rtrim($relativePath,DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
         if (move_uploaded_file($tempFile, $targetFile)) {
            return rtrim($relativePath,'/') . '/' . $fileName;
         } else {

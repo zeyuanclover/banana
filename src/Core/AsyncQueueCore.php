@@ -3,8 +3,10 @@
 namespace Plantation\Banana\Core;
 use FastRoute\Dispatcher;
 use Plantation\Banana\Cache\Cache;
+use Plantation\Banana\Core\Queue;
 use function Plantation\Banana\Functions\getFilesConfigInDirectory;
-class Core
+
+class AsyncQueueCore
 {
     /**
      * @var array|false
@@ -17,11 +19,6 @@ class Core
      */
     public function __construct()
     {
-        $requiredVersion = '8.3.0';
-        if (version_compare(PHP_VERSION, $requiredVersion, '<')) {
-            exit("你的PHP版本过低。需要至少 $requiredVersion ，当前版本为 " . PHP_VERSION . "。请升级你的PHP版本。");
-        }
-
         #框架路径
         define('FRAMEWORK_PATH', dirname(__DIR__));
 
@@ -39,13 +36,16 @@ class Core
         }
     }
 
+    //php plantation queue:listen --queue register \\Application\\Queue\\Controller\\LoginController@index
+
     /**
      * @return void
      * 框架运行方法
      */
-    public function run()
+    public function run($args)
     {
-        $cache = new Cache(new $this->env['SystemCacheDrive'](false,'cache'));
+        set_time_limit(0);
+        $cache = new Cache(new $this->env['SystemCacheDrive']('cache'));
 
         #载入方法
         if($this->env['cache']){
@@ -60,12 +60,12 @@ class Core
         }else{
             $functionsPath = $this->getFilesInDirectory(FRAMEWORK_PATH . DIRECTORY_SEPARATOR . 'Functions');
         }
-
         foreach ($functionsPath as $file){
             if(is_file($file)){
                 include ($file);
             }
         }
+
         unset($functionsPath);
 
         #载入公用配置
@@ -83,31 +83,8 @@ class Core
         }
 
         #确定应用
-        $appName = '';
-        $url = $_SERVER['REQUEST_URI'];
-        if($url=='/'){
-            $appName = 'Home';
-        }else{
-            $appName = explode('/', $url);
-            if (isset($configs['Web']['application'][$appName[1]]['name'])){
-                $appName = $configs['Web']['application'][$appName[1]]['name'];
-            }else{
-                $appName = 'Home';
-            }
-        }
-
-        # 获取子域名 - 优先级较高
-        $subDomain = '';
-        $host = $_SERVER['HTTP_HOST'];
-        $hostParts = explode('.', $host);
-        if (count($hostParts) > 2) {
-            $subDomain = $hostParts[0];
-        }
-        $hostParts = null;
-        if ($subDomain!='www'){
-            if (isset($configs['SubDomain']['application'][$subDomain]['name'])){
-                $appName = $configs['SubDomain']['application'][$subDomain]['name'];
-            }
+        if($args['1']=='queue:listen' && $args['2']=='--queue'){
+            $appName = 'Queue';
         }
 
         # 载入应用配置
@@ -138,83 +115,72 @@ class Core
             include (APP_PATH . DIRECTORY_SEPARATOR . ucfirst($appName) . DIRECTORY_SEPARATOR  . 'Route.php');
         }
 
-        if(!isset($dispatcher)){
-            echo '没有'.$appName.'模块！,请创建！在'.__METHOD__.__LINE__.'行';
-            exit;
+        if (isset($args[4])) {
+            $handle = $args[4];
+            $c = explode('@', $args[4]);
+            $controller = $a = $c[0];
+            $action = $b = $c[1];
+        }else{
+            $controller = $a = '';
+            $action = $b = '';
         }
 
-        # 路由
-        // Fetch method and URI from somewhere
-        $httpMethod = $_SERVER['REQUEST_METHOD'];
-        $uri = $_SERVER['REQUEST_URI'];
+        $data = [
+            'controller' => $a,
+            'action' => $b,
+            'appName' => $appName,
+            'vars' => $args,
+            'env' => $this->env,
+            'publicConfig' => $configs,
+            'appConfig' => $appConfigs,
+        ];
 
-        // Strip query string (?foo=bar) and decode URI
-        if (false !== $pos = strpos($uri, '?')) {
-            $uri = substr($uri, 0, $pos);
-        }
-        $uri = rawurldecode($uri);
+        define('APP_DEBUG', $this->env['debug']);
 
-        $routeInfo = $dispatcher->dispatch($httpMethod, $uri);
-        switch ($routeInfo[0]) {
-            case \FastRoute\Dispatcher::NOT_FOUND:
-                // ... 404 Not Found
-                break;
-            case \FastRoute\Dispatcher::METHOD_NOT_ALLOWED:
-                $allowedMethods = $routeInfo[1];
-                // ... 405 Method Not Allowed
-                break;
-            case \FastRoute\Dispatcher::FOUND:
-                $handler = $routeInfo[1];
-                $vars = $routeInfo[2];
-                // ... call $handler with $vars
+        $_SERVER['config'] = $appConfigs;
+        $_SERVER['sys_config'] = $configs;
 
-                # 定位类
-                $controller = '';
-                $hs = explode('@', $handler);
-                if($handler[0]=='\\'){
-                    $controller = $hs[0];
-                }else{
-                    if (isset($hs[0])){
-                        $controller = '\\Application\\'.ucfirst($appName).'\\Controller\\'.$hs[0];
+        $queue = new Queue($container->get('redis'));
+        while (true) {
+            $jobData = $queue->deQueue($args['3']);
+
+            if(!$jobData){
+                continue;
+            }
+
+            $jobData = json_decode($jobData, true);
+
+            if (isset($jobData['action'])&&$jobData['action']) {
+                $c = explode('@', $jobData['action']);
+                $controller = $a = $c[0];
+                $action = $b = $c[1];
+                $data['controller'] = $controller;
+                $data['action'] = $action;
+            }
+
+            $obj = new $controller($data, $container);
+            if (method_exists($obj, $b)) {
+                if ($jobData) {
+                    // 处理任务
+                    $rs = $obj->$action($queue, $jobData);
+                    if (!isset($rs['code']) || ($rs['code'] > 5)) {
+                        if ($queue->state($jobData['qid']) != 1) {
+                            if ($queue->getErrNumber($jobData['qid']) < $jobData['qerrNumer']) {
+                                $queue->addErrNumer($jobData['qid']);
+                                $queue->reEnQueue($args['3'], $jobData);
+                            }
+                        }
                     }
+                } else {
+                    // 没有任务，休眠一会儿
+                    sleep(1);
                 }
-
-                $action = 'index';
-                if (isset($hs[1])){
-                    $action = $hs[1];
-                }
-
-                $data = [
-                    'controller' => $controller,
-                    'action' => $action,
-                    'appName' => $appName,
-                    'vars' => $vars,
-                    'env'=>$this->env,
-                    'publicConfig' => $configs,
-                    'appConfig' => $appConfigs,
-                ];
-
-                $_SERVER['config'] = $appConfigs;
-                $_SERVER['sys_config'] = $configs;
-
-                define('APP_DEBUG',$this->env['debug']);
-
-                $obj = new $controller($data,$container);
-
-                unset($data);
-                unset($configs);
-                unset($appConfigs);
-
-                if (method_exists($controller, $action)){
-                    $obj->$action($vars);
-                }
-                break;
+            }
         }
 
         # 注销变量
         unset($obj);
         unset($cache);
-        unset($dispatcher);
         unset($container);
         unset($controller);
         unset($action);
@@ -236,7 +202,7 @@ class Core
                 continue;
             }
             if(is_dir($path.DIRECTORY_SEPARATOR.$value)){
-                $this->getFilesInDirectory($path.DIRECTORY_SEPARATOR.$value);
+                getFilesInDirectory($path.DIRECTORY_SEPARATOR.$value);
             }else{
                 if($value!='.DS_Store'){
                     $arr_file[] = $path.DIRECTORY_SEPARATOR.$value;

@@ -1,4 +1,5 @@
 <?php
+namespace Plantation\Banana\Functions;
 /**
  * @param $length
  * @return string
@@ -15,7 +16,6 @@ if(!function_exists('generateRandomString')){
         return $randomString;
     }
 }
-
 /**
  * @param $bytes
  * @param $precision
@@ -32,7 +32,6 @@ if(!function_exists('formatBytes')){
         return round($bytes, $precision) . ' ' . $units[$pow];
     }
 }
-
 /**
  * @param $date
  * @return string
@@ -63,18 +62,18 @@ if(!function_exists('relativeTime')){
         }
     }
 }
-
 /**
  * @param $length
  * @return string
  * 获取连续的随机数
  */
 if(!function_exists('getGuLd')){
-    function getGuLd($length){
-        return round(microtime(true) * 1000).mt_rand(1000,9999).generateRandomString(5);
+    function getGuLd($prefix='B',$suffixLength=10){
+        $currentDateTime = new \DateTime(); // 创建一个DateTime对象，表示当前时间
+        $microsecondPart = $currentDateTime->format('u');
+        return $prefix.time().$microsecondPart.round(microtime(true) * 1000).mt_rand(1000,9999).generateRandomString($suffixLength);
     }
 }
-
 /**
  * @param $filename
  * @return array|string
