@@ -1,5 +1,6 @@
 <?php
 namespace Plantation\Banana\Functions;
+
 /**
  * @param $path
  * @return array
@@ -29,6 +30,11 @@ if(!function_exists('getFilesConfigInDirectory')){
     }
 }
 
+/*
+ * @param 目录路径
+ * 递归获得目录下所有文件
+ * @返回数组
+ */
 if(!function_exists('getFilesInDirectory')){
     function getFilesInDirectory($path){
         //列出目录下的文件或目录
@@ -153,20 +159,58 @@ function upload($name,$key=[],$relativePath='',$fileName=''){
             $fileName = $name;
         }
 
-        $path = ROOT_PATH.DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.rtrim($relativePath,DIRECTORY_SEPARATOR);
+        $path = ROOT_PATH.DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'media'.DIRECTORY_SEPARATOR.rtrim($relativePath,DIRECTORY_SEPARATOR);
         if(!is_dir($path)){
             mkdir($path,0777,true);
         }
 
         if(!$relativePath){
-            $relativePath = date('Y-m-d-H');
+            $relativePath = '/media'.'/'.date('Y-m-d-H');
         }
 
-        $targetFile = ROOT_PATH.DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.rtrim($relativePath,DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $fileName;
+        $targetFile = $path . DIRECTORY_SEPARATOR . $fileName;
         if (move_uploaded_file($tempFile, $targetFile)) {
            return rtrim($relativePath,'/') . '/' . $fileName;
         } else {
             return false;
         }
     }
+}
+
+/**
+ * @param $path
+ * @return void
+ * 生成证书
+ */
+function generateCertificate($path){
+    // 配置公钥和私钥的配置
+    $config = array(
+        "private_key_bits" => 2048,
+        "private_key_type" => OPENSSL_KEYTYPE_RSA,
+    );
+
+    // 创建新的公钥和私钥
+    $res = openssl_pkey_new($config);
+
+    // 检查是否生成成功
+    if ($res === false) {
+        die('生成公钥和私钥失败');
+    }
+
+    // 从资源中获取公钥和私钥的信息
+    openssl_pkey_export($res, $privateKey);
+    $publicKeyDetails = openssl_pkey_get_details($res);
+    $publicKey = $publicKeyDetails["key"];
+
+    $path = rtrim($path,'/');
+    $path = rtrim($path,DIRECTORY_SEPARATOR);
+    if(!is_dir($path)){
+        mkdir($path,0777,true);
+    }
+
+    // 将私钥和公钥写入文件
+    $privateKeyFile = $path.DIRECTORY_SEPARATOR.'private_key.pem';
+    $publicKeyFile = $path.DIRECTORY_SEPARATOR.'public_key.pem';
+    file_put_contents($privateKeyFile, $privateKey);
+    file_put_contents($publicKeyFile, $publicKey);
 }

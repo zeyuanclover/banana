@@ -25,7 +25,7 @@ class View
         }else{
             $msg = '在 '.__METHOD__.' 方法第'.__LINE__.' 行, ['.$path . DIRECTORY_SEPARATOR . $template.'],不存在的模板，请创建！';
             $code = 1;
-            Exception::instance($msg, $code,null,1);
+            MyException::instance($msg, $code,null,1);
         }
     }
 }

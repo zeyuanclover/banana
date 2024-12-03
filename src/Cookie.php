@@ -16,7 +16,7 @@ class Cookie
      * @param $safe
      * 构造函数
      */
-    public function __construct($safe=true,$path)
+    public function __construct($safe=true,$path=[])
     {
         if ($safe==true){
             $this->safe = $safe;
@@ -26,8 +26,8 @@ class Cookie
             $this->path = $path;
         }else{
             $this->path = [
-                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/private.perm',
-                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/public.perm'
+                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'private.perm',
+                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'public.perm'
             ];
         }
     }
@@ -61,6 +61,10 @@ class Cookie
             $expires_or_options = $expire + time();
         }
 
+        if(is_array($value)){
+            $value = json_encode($value);
+        }
+
         if ($this->safe==1){
             $obj = new Certificate($this->path['private'],$this->path['public']);
             $value = $obj->publicEncrypt($value);
@@ -91,6 +95,10 @@ class Cookie
         if ($this->safe==1){
             $obj = new Certificate($this->path['private'],$this->path['public']);
             $value = $obj->privDecrypt($value);
+        }
+
+        if(json_validate($value)){
+            $value = json_decode($value,true);
         }
 
         return $value;

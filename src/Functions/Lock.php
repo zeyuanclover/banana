@@ -50,7 +50,7 @@ function file_lock($directory,$filename,$class,$data=[])
                 $obj = new $class();
                 if(method_exists($obj,$action)){
                     $rs = $obj->$action($data);
-                    if($rs&&$rs===true){
+                    if(isset($rs['state'])&&$rs['state']===true){
                         fwrite($fp, 'ok');
                     }else{
                         fwrite($fp, '-1');

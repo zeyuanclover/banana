@@ -25,7 +25,7 @@ class RedisSingle
      * @param $safe
      * 构造函数
      */
-    public function __construct($safe=true,$obj,$path=[])
+    public function __construct($safe,$obj,$path=[])
     {
         if ($safe==true){
             $this->safe = $safe;
@@ -35,8 +35,8 @@ class RedisSingle
             $this->path = $path;
         }else{
             $this->path = [
-                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/private.perm',
-                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/public.perm'
+                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'private.perm',
+                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'public.perm'
             ];
         }
     }
@@ -60,11 +60,12 @@ class RedisSingle
      */
     public function set($key, $value,$expire=0)
     {
+        if (is_array($value)){
+            $value = json_encode($value);
+        }
+
         if ($this->safe==true){
             $obj = new Certificate($this->path['private'],$this->path['public']);
-            if (is_array($value)){
-                $value = json_encode($value);
-            }
             $value = $obj->publicEncrypt($value);
         }
 
@@ -97,9 +98,10 @@ class RedisSingle
         if ($this->safe==true){
             $obj = new Certificate($this->path['private'],$this->path['public']);
             $value = $obj->privDecrypt($value);
-            if (json_validate($value)){
-                return json_decode($value,true);
-            }
+        }
+
+        if (json_validate($value)){
+            return json_decode($value,true);
         }
 
         return $value;

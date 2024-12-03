@@ -19,6 +19,16 @@ class Cache
     }
 
     /**
+     * @param $drive
+     * @return Cache
+     * 初始化
+     */
+    public static function instance($drive)
+    {
+        return new Cache($drive);
+    }
+
+    /**
      * @param $key
      * @param $value
      * @param $expire
@@ -58,5 +68,17 @@ class Cache
     function expire($key)
     {
         return $this->drive->expire($key);
+    }
+
+    /**
+     * @param $key
+     * @return mixed
+     * 一次性使用数据
+     */
+    function forget($key)
+    {
+        $val = $this->get($key);
+        $this->delete($key);
+        return $val;
     }
 }

@@ -2,7 +2,7 @@
 
 namespace Plantation\Banana\Core;
 
-class Exception
+class MyException
 {
     /**
      * @param $message
@@ -11,7 +11,11 @@ class Exception
      * 构造函数
      */
     public function __construct($message, $code = 0, \Exception $previous = null,$template=false){
-        if($this->isAjax()){
+        if(APP_DEBUG==false){
+            return null;
+        }
+
+        if($this->isAjax() || strtoupper($_SERVER['REQUEST_METHOD'])!== 'GET'){
             $this->ajaxMsg($message, $code, $previous);
         }else{
             if ($template) {
@@ -30,7 +34,7 @@ class Exception
      * 初始化函数
      */
     static function instance($message, $code = 0, \Exception $previous = null,$template=false){
-        return new Exception($message, $code, $previous,$template);
+        return new MyException($message, $code, $previous,$template);
     }
 
     /**
@@ -49,6 +53,7 @@ class Exception
      * ajax 异常提示
      */
     function ajaxMsg($message, $code = 0, \Exception $previous = null){
+        header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
            'code' => $code,
            'message' => $message
@@ -78,20 +83,6 @@ class Exception
      * 模板 异常提示
      */
     function msg($message, $code = 0, \Exception $previous = null){
-        echo $message;
-    }
-
-    /**
-     * @param $message
-     * @param $code
-     * @param \Exception|null $previous
-     * @return void
-     * post 异常提示
-     */
-    function postMsg($message, $code = 0, \Exception $previous = null){
-        echo json_encode([
-            'code' => $code,
-            'message' => $message
-        ]);
+        echo $code.'>>>'.$message;
     }
 }

@@ -8,14 +8,14 @@ class Model
      * @var
      * 数据库连接变量
      */
-    protected $conn;
+    protected static $conn;
 
     /**
      * @param $conn
      * 构造函数
      */
-    public function __construct($conn){
-        $this->conn = $conn;
+    public function __construct($conn=null){
+        self::$conn = $conn;
     }
 
     /**
@@ -23,11 +23,28 @@ class Model
      * @return mixed
      * db方法
      */
-    public function db($db=null)
+    public function database($name='default')
     {
-        if ($db){
-            $this->conn->db($db);
+        if ($name){
+            return self::$conn->database($name);
         }
-        return $this->conn;
+    }
+
+    /**
+     * @param $data
+     * @return mixed
+     * 写入日志
+     */
+    public function log($data){
+        return $this->database()->insert('log', $data);
+    }
+
+    /**
+     * @param $data
+     * @return mixed
+     * 后台日志
+     */
+    public function adminLog($data){
+        return $this->database()->insert('administrator_log', $data);
     }
 }

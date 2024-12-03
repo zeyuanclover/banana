@@ -28,14 +28,17 @@ class File
      */
     public function __construct($safe,$relativePath='',$path=[]){
         $this->safe = $safe;
-        $this->path = $relativePath;
+        $this->path = trim($relativePath,'/');
+        $this->path = trim($relativePath,DIRECTORY_SEPARATOR);
+
         $this->saveDirectory = ROOT_PATH . DIRECTORY_SEPARATOR . $this->path . DIRECTORY_SEPARATOR;
+
         if(count($path)>0){
             $this->permPath = $path;
         }else{
             $this->permPath = [
-                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/private.perm',
-                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'/perm/public.perm'
+                'private'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'private.perm',
+                'public'=>ROOT_PATH.DIRECTORY_SEPARATOR.'perm'.DIRECTORY_SEPARATOR.'public.perm'
             ];
         }
     }
@@ -145,5 +148,26 @@ class File
             }
         }
         return false;
+    }
+
+    /**
+     * @param $key
+     * @return int|mixed|true|null
+     * 剩余时间
+     */
+    public function ttl($key){
+        $saveDir = $this->saveDirectory;
+        $savePath = $saveDir . $key . '.php';
+        if(is_dir($saveDir)){
+            if (is_file($savePath)) {
+                $data = include $savePath;
+                if($data['expire']===true){
+                    return true;
+                }else{
+                    return $data['expire']-time();
+                }
+            }
+        }
+        return null;
     }
 }

@@ -71,7 +71,9 @@ if(!function_exists('getGuLd')){
     function getGuLd($prefix='B',$suffixLength=10){
         $currentDateTime = new \DateTime(); // 创建一个DateTime对象，表示当前时间
         $microsecondPart = $currentDateTime->format('u');
-        return $prefix.time().$microsecondPart.round(microtime(true) * 1000).mt_rand(1000,9999).generateRandomString($suffixLength);
+        $datetime = new \DateTime();
+        $t = $datetime->format('u');
+        return $prefix.time().$t.$microsecondPart.round(microtime(true) * 1000).mt_rand(1000,9999).generateRandomString($suffixLength);
     }
 }
 /**
@@ -85,6 +87,24 @@ if(!function_exists('getFileExtension')){
     }
 }
 
+if(!function_exists('getUserIP')) {
+    function getUserIP() {
+        $clientIP = null;
+
+        if (isset($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
+            // 使用客户端提供的IP地址
+            $clientIP = $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP)) {
+            // 使用X-Forwarded-For的头部信息
+            $clientIP = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        } else {
+            // 默认使用REMOTE_ADDR
+            $clientIP = $_SERVER['REMOTE_ADDR'];
+        }
+
+        return $clientIP;
+    }
+}
 /*
 // 使用示例
 echo relativeTime("2023-01-01 12:00:00"); // 输出: "几年前"
